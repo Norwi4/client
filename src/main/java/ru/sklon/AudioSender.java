@@ -8,7 +8,7 @@ import java.net.*;
  * @author Abaev Evgeniy
  */
 public class AudioSender implements Runnable {
-    private Socket socket;
+    private Socket socket; //asdf
     private Mixer mixer;
     public AudioSender(Socket socket, Mixer mixer) {
         this.socket = socket;
