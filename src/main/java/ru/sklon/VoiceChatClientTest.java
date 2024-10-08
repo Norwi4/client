@@ -10,34 +10,36 @@ import java.net.*;
  */
 public class VoiceChatClientTest {
     private JComboBox<String> microphoneList;
-    private JButton connectButton, disconnectButton;
-    private Socket socket;
-    private OutputStream outputStream;
+    private JTextField nicknameField;
+    private JButton toggleButton;
+    private Socket nicknameSocket;
+    private Socket audioSocket;
+    private OutputStream nicknameOutputStream;
+    private OutputStream audioOutputStream;
     private AudioFormat audioFormat;
     private TargetDataLine targetDataLine;
+    private boolean isConnected = false;
 
     public VoiceChatClientTest() {
         JFrame frame = new JFrame("Voice Chat Client");
         microphoneList = new JComboBox<>(getMicrophoneNames());
-        connectButton = new JButton("Подключиться");
-        disconnectButton = new JButton("Отключиться");
+        nicknameField = new JTextField("Введите ваш ник", 15);
+        toggleButton = new JButton("Подключиться");
 
-        connectButton.addActionListener(new ActionListener() {
+        toggleButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                connectToServer();
-            }
-        });
-
-        disconnectButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                disconnectFromServer();
+                if (!isConnected) {
+                    connectToServer();
+                } else {
+                    disconnectFromServer();
+                }
             }
         });
 
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
+        frame.add(nicknameField);
         frame.add(microphoneList);
-        frame.add(connectButton);
-        frame.add(disconnectButton);
+        frame.add(toggleButton);
         frame.setSize(300, 200);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
@@ -57,10 +59,21 @@ public class VoiceChatClientTest {
     private void connectToServer() {
         try {
             String serverAddress = "localhost"; // Замените на адрес вашего сервера
-            socket = new Socket(serverAddress, 6789);
-            outputStream = socket.getOutputStream();
 
-            audioFormat = new AudioFormat(44100, 16, 2, true, true);
+            // Сначала подключаемся для отправки ника
+            nicknameSocket = new Socket(serverAddress, 6789);
+            nicknameOutputStream = nicknameSocket.getOutputStream();
+
+            // Отправка ника на сервер
+            String nickname = nicknameField.getText();
+            nicknameOutputStream.write(nickname.getBytes());
+            nicknameOutputStream.flush();
+
+            // Теперь подключаемся для передачи аудио
+            audioSocket = new Socket(serverAddress, 6790); // Порт для аудио
+            audioOutputStream = audioSocket.getOutputStream();
+
+            audioFormat = new AudioFormat(44100, 16, 1, true, true); // mono
             targetDataLine = AudioSystem.getTargetDataLine(audioFormat);
             targetDataLine.open(audioFormat);
             targetDataLine.start();
@@ -68,9 +81,11 @@ public class VoiceChatClientTest {
             // Запуск потока для передачи аудио
             new Thread(this::sendAudio).start();
 
-            System.out.println("Подключено к серверу");
+            isConnected = true;
+            toggleButton.setText("Отключиться");
+            System.out.println("Подключено к серверу как: " + nickname);
         } catch (IOException | LineUnavailableException e) {
-            e.printStackTrace();
+            System.err.println("Ошибка при подключении к серверу: " + e.getMessage());
         }
     }
 
@@ -78,26 +93,35 @@ public class VoiceChatClientTest {
         byte[] buffer = new byte[4096];
 
         try {
-            while (true) {
+            while (isConnected) {
                 int bytesRead = targetDataLine.read(buffer, 0, buffer.length);
                 if (bytesRead > 0) {
-                    outputStream.write(buffer, 0, bytesRead);
+                    audioOutputStream.write(buffer, 0, bytesRead);
+                    audioOutputStream.flush(); // Убедитесь, что данные отправлены
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Ошибка при отправке аудио: " + e.getMessage());
         }
     }
 
     private void disconnectFromServer() {
         try {
+            isConnected = false;
             targetDataLine.stop();
             targetDataLine.close();
-            outputStream.close();
-            socket.close();
+
+            // Закрываем потоки и сокеты
+            audioOutputStream.close();
+            audioSocket.close();
+
+            nicknameOutputStream.close(); // Закрываем выходной поток ника
+            nicknameSocket.close(); // Закрываем сокет ника
+
+            toggleButton.setText("Подключиться");
             System.out.println("Отключено от сервера");
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Ошибка при отключении от сервера: " + e.getMessage());
         }
     }
 
