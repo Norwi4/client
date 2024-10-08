@@ -14,11 +14,11 @@ public class AudioReceiver implements Runnable {
     @Override
     public void run() {
         try {
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[4096];
             InputStream in = socket.getInputStream();
 
             // Настройка формата аудио для воспроизведения
-            AudioFormat format = new AudioFormat(48000, 16, 1, true, true);
+            AudioFormat format = new AudioFormat(44100, 16, 1, true, true);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
             SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
             line.open(format);
