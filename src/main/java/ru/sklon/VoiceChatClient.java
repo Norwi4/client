@@ -5,11 +5,14 @@ import javax.sound.sampled.*;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
+
+import javax.sound.sampled.*;
 /**
  * @author Abaev Evgeniy
  */
 public class VoiceChatClient {
-    private static final String SERVER_ADDRESS = "localhost"; // Измените на IP-адрес сервера
+    private static final String SERVER_ADDRESS = "51.250.45.140"; // Измените на IP-адрес сервера
     private static final int PORT = 50005;
     public static void main(String[] args) throws Exception {
         Socket socket = new Socket(SERVER_ADDRESS, PORT);
